@@ -18,7 +18,7 @@ This repository contains a simple Node.js + Express backend that simulates a clo
 
 ## Deployment
 
-The app was deployed manually on an **AWS EC2 instance** (Ubuntu 24.04).
+The app is deployed on an **AWS EC2 instance** (Ubuntu 24.04) using a simple setup script.
 
 ### EC2 Setup Instructions:
 
@@ -30,21 +30,19 @@ The app was deployed manually on an **AWS EC2 instance** (Ubuntu 24.04).
 ssh -i "your-key.pem" ubuntu@<your-ec2-public-dns>
 ```
 
-4. Install Node.js and npm:
+4. Upload the `setup.sh` file to the EC2 instance, then run:
 
 ```bash
-sudo apt update
-sudo apt install -y nodejs npm
+chmod +x setup.sh
+./setup.sh
 ```
 
-5. Upload or clone the project, then run:
-
-```bash
-npm install
-node index.js
-```
-
-The server listens on port 3000.
+This script will:
+- Update packages
+- Install Node.js, npm, and git
+- Clone this repo
+- Install dependencies
+- Start the app
 
 ---
 
@@ -69,4 +67,3 @@ curl -X POST "http://<your-ec2-public-dns>:3000/entry?plate=123-123-123&parkingL
 
 - No database is used yet (in-memory only), as allowed in Exercise 1.
 - No AWS/GCP automation tools (Terraform, Pulumi) were required for this manual deployment.
-
