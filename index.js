@@ -1,38 +1,81 @@
 const express = require('express');
+const AWS = require('aws-sdk');
+const { v4: uuidv4 } = require('uuid');
+
 const app = express();
 app.use(express.json());
 
-let tickets = {};
-let currentId = 1;
+// Configure AWS SDK
+AWS.config.update({ region: 'eu-north-1' });
+const dynamo = new AWS.DynamoDB.DocumentClient();
 
-app.post('/entry', (req, res) => {
+const TABLE_NAME = 'Tickets';
+
+app.post('/entry', async (req, res) => {
   const { plate, parkingLot } = req.query;
+
+  if (!plate || !parkingLot) {
+    return res.status(400).json({ error: 'Missing plate or parkingLot' });
+  }
+
+  const ticketId = uuidv4();
   const entryTime = Date.now();
-  const ticketId = currentId++;
-  tickets[ticketId] = { plate, parkingLot, entryTime };
-  res.json({ ticketId });
+
+  const params = {
+    TableName: TABLE_NAME,
+    Item: {
+      ticketId,
+      plate,
+      parkingLot,
+      entryTime
+    }
+  };
+
+  try {
+    await dynamo.put(params).promise();
+    res.json({ ticketId });
+  } catch (err) {
+    console.error('DynamoDB Put Error:', err);
+    res.status(500).json({ error: 'Failed to store ticket' });
+  }
 });
 
-app.post('/exit', (req, res) => {
+app.post('/exit', async (req, res) => {
   const { ticketId } = req.query;
-  const ticket = tickets[ticketId];
-  if (!ticket) return res.status(404).json({ error: 'Invalid ticket ID' });
 
-  const exitTime = Date.now();
-  const durationMs = exitTime - ticket.entryTime;
-  const durationMin = Math.ceil(durationMs / (1000 * 60));
-  const charge = Math.ceil(durationMin / 15) * (10 / 4);
+  if (!ticketId) {
+    return res.status(400).json({ error: 'Missing ticketId' });
+  }
 
-  res.json({
-    plate: ticket.plate,
-    parkingLot: ticket.parkingLot,
-    minutesParked: durationMin,
-    charge: `$${charge.toFixed(2)}`
-  });
+  const params = {
+    TableName: TABLE_NAME,
+    Key: { ticketId }
+  };
 
-  delete tickets[ticketId];
+  try {
+    const result = await dynamo.get(params).promise();
+    const ticket = result.Item;
+
+    if (!ticket) return res.status(404).json({ error: 'Invalid ticket ID' });
+
+    const exitTime = Date.now();
+    const durationMin = Math.ceil((exitTime - ticket.entryTime) / 60000);
+    const charge = Math.ceil(durationMin / 15) * (10 / 4);
+
+    await dynamo.delete(params).promise();
+
+    res.json({
+      plate: ticket.plate,
+      parkingLot: ticket.parkingLot,
+      minutesParked: durationMin,
+      charge: `$${charge.toFixed(2)}`
+    });
+  } catch (err) {
+    console.error('DynamoDB Error:', err);
+    res.status(500).json({ error: 'Failed to process ticket' });
+  }
 });
 
-app.listen(80, () => {
-  console.log('Server running on port 80');
+app.listen(3000, () => {
+  console.log('Server running on port 3000');
 });

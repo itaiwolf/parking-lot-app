@@ -1,15 +1,15 @@
 
 # Parking Lot Management System (Cloud Assignment)
 
-This repository contains a simple Node.js + Express backend that simulates a cloud-based parking lot management system.
+This repository contains a Node.js + Express backend that simulates a cloud-based parking lot management system.
 
 ## Features
 
 - POST `/entry?plate=...&parkingLot=...`  
-  → Returns a ticket ID, saves entry time.
+  → Generates a ticket ID, stores vehicle entry data in DynamoDB.
 
 - POST `/exit?ticketId=...`  
-  → Calculates parking duration and returns plate, lot ID, duration, and fee.
+  → Retrieves entry data, calculates time parked and charge, deletes the ticket from DynamoDB.
 
 ### Billing:
 - $10/hour, billed in 15-minute increments.
@@ -18,7 +18,7 @@ This repository contains a simple Node.js + Express backend that simulates a clo
 
 ## Deployment
 
-The app is deployed on an **AWS EC2 instance** (Ubuntu 24.04) using a simple setup script.
+The app is deployed on an **AWS EC2 instance** (Ubuntu 24.04) and uses **DynamoDB** for persistence.
 
 ### EC2 Setup Instructions:
 
@@ -37,12 +37,15 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-This script will:
-- Update packages
-- Install Node.js, npm, and git
-- Clone this repo
-- Install dependencies
-- Start the app
+---
+
+### DynamoDB Setup Instructions:
+
+1. Go to the AWS Management Console → DynamoDB.
+2. Create a new table:
+   - Table name: `Tickets`
+   - Partition key: `ticketId` (String)
+3. No sort key or secondary indexes are required.
 
 ---
 
@@ -52,7 +55,7 @@ To test from inside EC2:
 
 ```bash
 curl -X POST "http://localhost:3000/entry?plate=123-123-123&parkingLot=382"
-curl -X POST "http://localhost:3000/exit?ticketId=1"
+curl -X POST "http://localhost:3000/exit?ticketId=THE_ID_FROM_ENTRY"
 ```
 
 To test externally (once running):
@@ -63,7 +66,9 @@ curl -X POST "http://<your-ec2-public-dns>:3000/entry?plate=123-123-123&parkingL
 
 ---
 
-## Note
+## Notes
 
-- No database is used yet (in-memory only), as allowed in Exercise 1.
-- No AWS/GCP automation tools (Terraform, Pulumi) were required for this manual deployment.
+- This version uses **AWS DynamoDB** for persistent storage.
+- No hardcoded access keys are present in the repo.
+- The app assumes that the EC2 instance has the necessary IAM role or environment credentials to access DynamoDB.
+
